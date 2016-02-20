@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 from babygdcli import (
     drive, DIR_MIME_TYPE, GOOGLE_APPS_MIME_TYPE_STEM,
