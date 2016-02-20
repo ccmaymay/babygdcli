@@ -1,4 +1,6 @@
-from core import (
+#!/usr/bin/env python
+
+from babygdcli import (
     drive, DIR_MIME_TYPE, GOOGLE_APPS_MIME_TYPE_STEM,
     format_owner_names, format_mime_type, format_title,
     gen_paths
