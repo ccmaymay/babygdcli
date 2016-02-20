@@ -1,0 +1,4 @@
+/babygdcli.egg-info/
+/build/
+/dist/
+*.pyc
