@@ -5,7 +5,6 @@ from babygdcli import (
     format_owner_names, format_mime_type, format_title,
     gen_paths
 )
-import os
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 

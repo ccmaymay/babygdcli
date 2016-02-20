@@ -22,7 +22,9 @@ def format_title(title, mime_type):
         return title
 
 
-gauth = GoogleAuth(settings_file=os.path.expanduser('~/.pydrive/settings.yaml'))
+gauth = GoogleAuth(
+    settings_file=os.path.expanduser('~/.babygdcli/settings.yaml')
+)
 gauth.LoadCredentialsFile()
 gauth.CommandLineAuth()
 gauth.SaveCredentialsFile()

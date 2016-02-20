@@ -1,2 +1,2 @@
-client_config_file: /home/you/.pydrive/client_secrets.json
-save_credentials_file: /home/you/.pydrive/gauth.cred
+client_config_file: /home/you/.babygdcli/client_secrets.json
+save_credentials_file: /home/you/.babygdcli/gauth.cred
