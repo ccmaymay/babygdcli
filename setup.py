@@ -16,7 +16,7 @@ setup(
     ],
     scripts=glob('scripts/*'),
     install_requires=[
-        'PyDrive>=1.0.0',
+        'PyDrive>=1.3.1',
     ],
     url='https://github.com/cjmay/babygdcli',
     license='BSD',
