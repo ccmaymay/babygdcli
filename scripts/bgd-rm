@@ -18,24 +18,15 @@ for (abspath, relpath) in gen_paths(ns.paths, root_abspath=ns.d):
     entry_id = 'root'
     if relpath:
         relpath_pieces = relpath.split('/')
-        for title in relpath_pieces[:-1]:
+        for title in relpath_pieces:
             entries = drive.ListFile({'q': "'%s' in parents and title='%s' and trashed=false" % (entry_id, title)}).GetList()
             if len(entries) < 1:
-                d = drive.CreateFile()
-                d['title'] = title
-                d['parents'] = [{'id': entry_id}]
-                d['mimeType'] = 'application/vnd.google-apps.folder'
-                d.Upload()
-                entries = [d]
+                raise Exception('%s does not exist' % title)
             elif len(entries) > 1:
                 raise Exception('%s has more than one parent?' % title)
             entry_id = entries[0]['id']
             if "'" in entry_id:
                 raise Exception('%s has evil id %s' % (entries[0]['title'], entry_id))
-        title = relpath_pieces[-1]
 
-    f = drive.CreateFile()
-    f['title'] = title
-    f['parents'] = [{'id': entry_id}]
-    f.SetContentFile(abspath)
-    f.Upload()
+    f = drive.CreateFile({'id': entry_id})
+    f.Delete()
