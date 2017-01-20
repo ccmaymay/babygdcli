@@ -1,10 +1,8 @@
-from ez_setup import use_setuptools
-use_setuptools()
 from setuptools import setup
 from glob import glob
 
 
-__version__ = '0.1b0'
+__version__ = '0.1'
 
 
 setup(
