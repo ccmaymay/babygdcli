@@ -34,7 +34,7 @@ drive = GoogleDrive(gauth)
 
 def gen_paths(paths=None, root_abspath=None):
     if root_abspath is None:
-        root_abspath = os.path.expanduser('~')
+        root_abspath = os.getcwd()
 
     if not paths:
         paths = ['.']
