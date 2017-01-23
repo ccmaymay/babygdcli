@@ -16,6 +16,8 @@ ns = parser.parse_args()
 
 for (abspath, relpath) in gen_paths(ns.paths, root_abspath=ns.d):
     entry_id = 'root'
+    title = ''
+
     if relpath:
         relpath_pieces = relpath.split('/')
         for title in relpath_pieces[:-1]:
@@ -32,10 +34,17 @@ for (abspath, relpath) in gen_paths(ns.paths, root_abspath=ns.d):
             entry_id = entries[0]['id']
             if "'" in entry_id:
                 raise Exception('%s has evil id %s' % (entries[0]['title'], entry_id))
-        title = relpath_pieces[-1]
 
-    f = drive.CreateFile()
-    f['title'] = title
-    f['parents'] = [{'id': entry_id}]
-    f.SetContentFile(abspath)
-    f.Upload()
+        title = relpath_pieces[-1]
+        entries = drive.ListFile({'q': "'%s' in parents and title='%s' and trashed=false" % (entry_id, title)}).GetList()
+        if len(entries) < 1:
+            f = drive.CreateFile({'title': title, 'parents': [{'id': entry_id}]})
+            f.Upload()
+            entries = [f]
+        elif len(entries) > 1:
+            raise Exception('%s has more than one parent?' % title)
+        f = entries[0]
+        if "'" in f['id']:
+            raise Exception('%s has evil id %s' % (f['title'], f['id']))
+        f.SetContentFile(abspath)
+        f.Upload()
