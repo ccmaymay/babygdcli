@@ -11,7 +11,7 @@ fi
 
 set -e
 
-inotifywait --format '%w%f' -m -e close_write "$@" 2>/dev/null | \
+inotifywait --format '%w%f' -m -e close_write "$@" | \
     while read path
     do
         gdcp.py push $path
