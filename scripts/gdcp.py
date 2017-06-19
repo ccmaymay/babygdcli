@@ -3,6 +3,7 @@
 
 from babygdcli import drive, gen_paths
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import logging
 
 
 parser = ArgumentParser(
@@ -16,6 +17,9 @@ parser.add_argument('-d', type=str)
 args = parser.parse_args()
 
 [(abspath, relpath)] = list(gen_paths([args.path], root_abspath=args.d))
+
+local_path = abspath
+remote_path = relpath
 
 
 def get_entries(drive, entry_id, title):
@@ -46,6 +50,16 @@ def get_entry_id(drive, entry_id, title):
     return entry_id
 
 
+
+logger = logging.getLogger('babygdcli')
+stderr_handler = logging.StreamHandler()
+stderr_handler.setFormatter(logging.Formatter(
+    fmt='%(asctime)-15s %(levelname)s: %(message)s'
+))
+logger.addHandler(stderr_handler)
+logger.setLevel(logging.INFO)
+
+
 if args.command == 'pull':
     entry_id = 'root'
     if relpath:
@@ -55,6 +69,11 @@ if args.command == 'pull':
 
     f = drive.CreateFile({'id': entry_id})
     f.GetContentFile(abspath)
+
+    logger.info(
+        '%s <- %s' %
+        (local_path, remote_path)
+    )
 
 elif args.command == 'push':
     entry_id = 'root'
@@ -94,6 +113,11 @@ elif args.command == 'push':
 
         f.SetContentFile(abspath)
         f.Upload()
+
+    logger.info(
+        '%s -> %s' %
+        (local_path, remote_path)
+    )
 
 else:
     raise ValueError('unknown command %s' % args.command)
