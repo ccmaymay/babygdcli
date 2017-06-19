@@ -90,6 +90,7 @@ elif args.command == 'push':
             check_entry_id(f['id'], f['title'])
         else:
             entry_id = new_entry_id
+            f = drive.CreateFile({'id': entry_id})
 
         f.SetContentFile(abspath)
         f.Upload()
