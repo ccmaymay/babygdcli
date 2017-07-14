@@ -11,15 +11,10 @@ parser = ArgumentParser(
     description='pull/push individual files')
 parser.add_argument('command', type=str, choices=('pull', 'push'),
                     help='command to execute against server')
-parser.add_argument('path', type=str,
-                    help='local/remote path to push/pull (respectively)')
+parser.add_argument('paths', type=str, nargs='+', metavar='path',
+                    help='local/remote paths to push/pull (respectively)')
 parser.add_argument('-d', type=str)
 args = parser.parse_args()
-
-[(abspath, relpath)] = list(gen_paths([args.path], root_abspath=args.d))
-
-local_path = abspath
-remote_path = relpath
 
 
 def get_entries(drive, entry_id, title):
@@ -50,7 +45,6 @@ def get_entry_id(drive, entry_id, title):
     return entry_id
 
 
-
 logger = logging.getLogger('babygdcli')
 stderr_handler = logging.StreamHandler()
 stderr_handler.setFormatter(logging.Formatter(
@@ -60,64 +54,68 @@ logger.addHandler(stderr_handler)
 logger.setLevel(logging.INFO)
 
 
-if args.command == 'pull':
-    entry_id = 'root'
-    if relpath:
-        relpath_pieces = relpath.split('/')
-        for title in relpath_pieces:
-            entry_id = get_entry_id(drive, entry_id, title)
+for (abspath, relpath) in gen_paths(args.paths, root_abspath=args.d):
+    local_path = abspath
+    remote_path = relpath
 
-    f = drive.CreateFile({'id': entry_id})
-    f.GetContentFile(abspath)
+    if args.command == 'pull':
+        entry_id = 'root'
+        if relpath:
+            relpath_pieces = relpath.split('/')
+            for title in relpath_pieces:
+                entry_id = get_entry_id(drive, entry_id, title)
 
-    logger.info(
-        '%s <- %s' %
-        (local_path, remote_path)
-    )
+        f = drive.CreateFile({'id': entry_id})
+        f.GetContentFile(abspath)
 
-elif args.command == 'push':
-    entry_id = 'root'
-    title = ''
+        logger.info(
+            '%s <- %s' %
+            (local_path, remote_path)
+        )
 
-    if relpath:
-        relpath_pieces = relpath.split('/')
-        for title in relpath_pieces[:-1]:
+    elif args.command == 'push':
+        entry_id = 'root'
+        title = ''
+
+        if relpath:
+            relpath_pieces = relpath.split('/')
+            for title in relpath_pieces[:-1]:
+                try:
+                    new_entry_id = get_entry_id(drive, entry_id, title)
+                except NoSuchFolder:
+                    d = drive.CreateFile()
+                    d['title'] = title
+                    d['parents'] = [{'id': entry_id}]
+                    d['mimeType'] = 'application/vnd.google-apps.folder'
+                    d.Upload()
+                    entries = [d]
+                    entry_id = d['id']
+                    check_entry_id(entry_id, d['title'])
+                else:
+                    entry_id = new_entry_id
+
+            title = relpath_pieces[-1]
             try:
                 new_entry_id = get_entry_id(drive, entry_id, title)
             except NoSuchFolder:
-                d = drive.CreateFile()
-                d['title'] = title
-                d['parents'] = [{'id': entry_id}]
-                d['mimeType'] = 'application/vnd.google-apps.folder'
-                d.Upload()
-                entries = [d]
-                entry_id = d['id']
-                check_entry_id(entry_id, d['title'])
+                f = drive.CreateFile({
+                    'title': title,
+                    'parents': [{'id': entry_id}]
+                })
+                f.Upload()
+                entries = [f]
+                check_entry_id(f['id'], f['title'])
             else:
                 entry_id = new_entry_id
+                f = drive.CreateFile({'id': entry_id})
 
-        title = relpath_pieces[-1]
-        try:
-            new_entry_id = get_entry_id(drive, entry_id, title)
-        except NoSuchFolder:
-            f = drive.CreateFile({
-                'title': title,
-                'parents': [{'id': entry_id}]
-            })
+            f.SetContentFile(abspath)
             f.Upload()
-            entries = [f]
-            check_entry_id(f['id'], f['title'])
-        else:
-            entry_id = new_entry_id
-            f = drive.CreateFile({'id': entry_id})
 
-        f.SetContentFile(abspath)
-        f.Upload()
+        logger.info(
+            '%s -> %s' %
+            (local_path, remote_path)
+        )
 
-    logger.info(
-        '%s -> %s' %
-        (local_path, remote_path)
-    )
-
-else:
-    raise ValueError('unknown command %s' % args.command)
+    else:
+        raise ValueError('unknown command %s' % args.command)

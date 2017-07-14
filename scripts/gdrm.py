@@ -6,7 +6,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument('paths', metavar='path', nargs='*', type=str)
+parser.add_argument('paths', metavar='path', nargs='+', type=str)
 parser.add_argument('-d', type=str)
 args = parser.parse_args()
 
