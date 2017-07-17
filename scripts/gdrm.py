@@ -7,10 +7,9 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument('paths', metavar='path', nargs='+', type=str)
-parser.add_argument('-d', type=str)
 args = parser.parse_args()
 
-for (abspath, relpath) in gen_paths(args.paths, root_abspath=args.d):
+for (abspath, relpath) in gen_paths(args.paths):
     entry_id = 'root'
     if relpath:
         relpath_pieces = relpath.split('/')

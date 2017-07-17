@@ -10,13 +10,17 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument('paths', metavar='path', nargs='+', type=str)
-parser.add_argument('-d', type=str)
+parser.add_argument('paths', metavar='path', nargs='*', type=str)
 parser.add_argument('-l', action='store_true')
 parser.add_argument('-t', action='store_true')
 args = parser.parse_args()
 
-for (abspath, relpath) in gen_paths(args.paths, root_abspath=args.d):
+if args.paths:
+    paths = args.paths
+else:
+    paths = ['.']
+
+for (abspath, relpath) in gen_paths(paths):
     parent_id = 'root'
     if relpath:
         relpath_pieces = relpath.split('/')

@@ -4,6 +4,7 @@
 from babygdcli import drive, gen_paths
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import logging
+import os
 
 
 parser = ArgumentParser(
@@ -13,7 +14,7 @@ parser.add_argument('command', type=str, choices=('pull', 'push'),
                     help='command to execute against server')
 parser.add_argument('paths', type=str, nargs='+', metavar='path',
                     help='local/remote paths to push/pull (respectively)')
-parser.add_argument('-d', type=str)
+parser.add_argument('-r', action='store_true')
 args = parser.parse_args()
 
 
@@ -45,6 +46,16 @@ def get_entry_id(drive, entry_id, title):
     return entry_id
 
 
+def mixed_paths_to_file_paths(paths):
+    for path in paths:
+        if os.path.isfile(path):
+            yield path
+        else:
+            for (parent_path, dir_entries, file_entries) in os.walk(path):
+                for file_entry in file_entries:
+                    yield os.path.join(parent_path, file_entry)
+
+
 logger = logging.getLogger('babygdcli')
 stderr_handler = logging.StreamHandler()
 stderr_handler.setFormatter(logging.Formatter(
@@ -54,11 +65,14 @@ logger.addHandler(stderr_handler)
 logger.setLevel(logging.INFO)
 
 
-for (abspath, relpath) in gen_paths(args.paths, root_abspath=args.d):
-    local_path = abspath
-    remote_path = relpath
+if args.command == 'pull':
+    for (abspath, relpath) in gen_paths(args.paths):
+        local_path = abspath
+        remote_path = relpath
 
-    if args.command == 'pull':
+        if args.r:
+            raise Exception('recursive pull not yet implemented')
+
         entry_id = 'root'
         if relpath:
             relpath_pieces = relpath.split('/')
@@ -73,7 +87,17 @@ for (abspath, relpath) in gen_paths(args.paths, root_abspath=args.d):
             (local_path, remote_path)
         )
 
-    elif args.command == 'push':
+elif args.command == 'push':
+    if args.r:
+        paths = mixed_paths_to_file_paths(args.paths)
+        raise Exception('recursive pull not yet implemented')
+    else:
+        paths = args.paths
+
+    for (abspath, relpath) in gen_paths(paths):
+        local_path = abspath
+        remote_path = relpath
+
         entry_id = 'root'
         title = ''
 
