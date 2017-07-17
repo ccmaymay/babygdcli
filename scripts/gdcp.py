@@ -141,5 +141,5 @@ elif args.command == 'push':
             (local_path, remote_path)
         )
 
-    else:
-        raise ValueError('unknown command %s' % args.command)
+else:
+    raise ValueError('unknown command %s' % args.command)

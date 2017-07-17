@@ -2,7 +2,7 @@ from setuptools import setup
 from glob import glob
 
 
-__version__ = '0.2b7'
+__version__ = '0.2b8'
 
 
 setup(
