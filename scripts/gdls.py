@@ -6,6 +6,7 @@ import logging
 
 from babygdcli import (
     get_service, get_file, get_arg_parser, FOLDER_MIME_TYPE,
+    set_stdout_encoding,
 )
 
 
@@ -40,6 +41,8 @@ def main():
         format='%(asctime)-15s %(levelname)s: %(message)s',
         level=logging.INFO,
     )
+
+    set_stdout_encoding()
 
     service = get_service(args)
     ls(service, args.path)
