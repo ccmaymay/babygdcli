@@ -1,145 +1,113 @@
 #!/usr/bin/env python2.7
 
 
-from babygdcli import drive, gen_paths
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import logging
-import os
+
+from apiclient.http import MediaFileUpload, MediaIoBaseDownload
+
+from babygdcli import (
+    get_service, get_file_id, NoSuchFile, get_arg_parser, FOLDER_MIME_TYPE,
+)
 
 
-parser = ArgumentParser(
-    formatter_class=ArgumentDefaultsHelpFormatter,
-    description='pull/push individual files')
-parser.add_argument('command', type=str, choices=('pull', 'push'),
-                    help='command to execute against server')
-parser.add_argument('paths', type=str, nargs='+', metavar='path',
-                    help='local/remote paths to push/pull (respectively)')
-parser.add_argument('-r', action='store_true')
-args = parser.parse_args()
-
-
-def get_entries(drive, entry_id, title):
-    return drive.ListFile({
-        'q': "'%s' in parents and title='%s' and trashed=false" %
-             (entry_id, title)
-    }).GetList()
-
-
-def check_entry_id(entry_id, title):
-    if "'" in entry_id:
-        raise Exception('%s has evil id %s' % (title, entry_id))
-
-
-class NoSuchFolder(Exception):
-    def __init__(self, path):
-        Exception.__init__(self, '%s does not exist' % path)
-
-
-def get_entry_id(drive, entry_id, title):
-    entries = get_entries(drive, entry_id, title)
-    if len(entries) < 1:
-        raise NoSuchFolder(title)
-    elif len(entries) > 1:
-        raise Exception('%s has more than one parent?' % title)
-    entry_id = entries[0]['id']
-    check_entry_id(entry_id, entries[0]['title'])
-    return entry_id
-
-
-def mixed_paths_to_file_paths(paths):
-    for path in paths:
-        if os.path.isfile(path):
-            yield path
-        else:
-            for (parent_path, dir_entries, file_entries) in os.walk(path):
-                for file_entry in file_entries:
-                    yield os.path.join(parent_path, file_entry)
-
-
-logger = logging.getLogger('babygdcli')
-stderr_handler = logging.StreamHandler()
-stderr_handler.setFormatter(logging.Formatter(
-    fmt='%(asctime)-15s %(levelname)s: %(message)s'
-))
-logger.addHandler(stderr_handler)
-logger.setLevel(logging.INFO)
-
-
-if args.command == 'pull':
-    for (abspath, relpath) in gen_paths(args.paths):
-        local_path = abspath
-        remote_path = relpath
-
-        if args.r:
-            raise Exception('recursive pull not yet implemented')
-
-        entry_id = 'root'
-        if relpath:
-            relpath_pieces = relpath.split('/')
-            for title in relpath_pieces:
-                entry_id = get_entry_id(drive, entry_id, title)
-
-        f = drive.CreateFile({'id': entry_id})
-        f.GetContentFile(abspath)
-
-        logger.info(
-            '%s <- %s' %
-            (local_path, remote_path)
-        )
-
-elif args.command == 'push':
-    if args.r:
-        paths = mixed_paths_to_file_paths(args.paths)
+def pull(service, src_path, dst_path, recursive=False):
+    if recursive:
         raise Exception('recursive pull not yet implemented')
-    else:
-        paths = args.paths
 
-    for (abspath, relpath) in gen_paths(paths):
-        local_path = abspath
-        remote_path = relpath
+    file_id = 'root'
+    src_components = src_path.split('/')
+    for name in src_components:
+        file_id = get_file_id(service, file_id, name)
 
-        entry_id = 'root'
-        title = ''
+    request = service.files().get_media(fileId=file_id)
+    with open(dst_path, 'w') as f:
+        downloader = MediaIoBaseDownload(f, request)
+        (status, done) = downloader.next_chunk()
+        while done is False:
+            logging.info('downloading... {:.2f}%'.format(
+                status.progress() * 100))
+            (status, done) = downloader.next_chunk()
 
-        if relpath:
-            relpath_pieces = relpath.split('/')
-            for title in relpath_pieces[:-1]:
-                try:
-                    new_entry_id = get_entry_id(drive, entry_id, title)
-                except NoSuchFolder:
-                    d = drive.CreateFile()
-                    d['title'] = title
-                    d['parents'] = [{'id': entry_id}]
-                    d['mimeType'] = 'application/vnd.google-apps.folder'
-                    d.Upload()
-                    entries = [d]
-                    entry_id = d['id']
-                    check_entry_id(entry_id, d['title'])
-                else:
-                    entry_id = new_entry_id
+    logging.info('{} <- {}'.format(dst_path, src_path))
 
-            title = relpath_pieces[-1]
-            try:
-                new_entry_id = get_entry_id(drive, entry_id, title)
-            except NoSuchFolder:
-                f = drive.CreateFile({
-                    'title': title,
-                    'parents': [{'id': entry_id}]
-                })
-                f.Upload()
-                entries = [f]
-                check_entry_id(f['id'], f['title'])
-            else:
-                entry_id = new_entry_id
-                f = drive.CreateFile({'id': entry_id})
 
-            f.SetContentFile(abspath)
-            f.Upload()
+def push(service, src_path, dst_path, recursive=False):
+    if recursive:
+        raise Exception('recursive push not yet implemented')
 
-        logger.info(
-            '%s -> %s' %
-            (local_path, remote_path)
+    file_id = 'root'
+    dst_components = dst_path.split('/')
+    for name in dst_components[:-1]:
+        try:
+            new_file_id = get_file_id(service, file_id, name)
+        except NoSuchFile:
+            response = service.files().create(
+                body=dict(
+                    name=name,
+                    parents=dict(id=file_id),
+                    mimeType=FOLDER_MIME_TYPE,
+                ),
+                fields='id',
+            ).execute()
+            file_id = response.get('id')
+        else:
+            file_id = new_file_id
+
+    name = dst_components[-1]
+    try:
+        new_file_id = get_file_id(service, file_id, name)
+    except NoSuchFile:
+        request = service.files().create(
+            body=dict(
+                name=name,
+                parents=dict(id=file_id),
+            ),
+            media_body=MediaFileUpload(src_path, resumable=True),
+            fields='id',
         )
+    else:
+        file_id = new_file_id
+        request = service.files().update(
+            fileId=file_id,
+            media_body=MediaFileUpload(src_path, resumable=True),
+        )
+    (status, response) = request.next_chunk()
+    while response is None:
+        logging.info('uploading... {:.2f}%'.format(
+            status.progress() * 100))
+        (status, response) = request.next_chunk()
 
-else:
-    raise ValueError('unknown command %s' % args.command)
+    logging.info('{} -> {}'.format(src_path, dst_path))
+
+
+def main():
+    parser = get_arg_parser('pull/push individual files')
+    parser.add_argument('command', type=str, choices=('pull', 'push'),
+                        help='command to execute against server')
+    parser.add_argument('src_path', type=str,
+                        help='local/remote path to push/pull, respectively')
+    parser.add_argument('dst_path', type=str,
+                        help='remote/local path to push/pull to, respectively')
+    parser.add_argument('-r', action='store_true',
+                        help='recursive')
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        format='%(asctime)-15s %(levelname)s: %(message)s',
+        level=logging.INFO,
+    )
+
+    service = get_service(args)
+
+    if args.command == 'pull':
+        pull(service, args.src_path, args.dst_path, args.r)
+
+    elif args.command == 'push':
+        push(service, args.src_path, args.dst_path, args.r)
+
+    else:
+        raise ValueError('unknown command ' + args.command)
+
+
+if __name__ == '__main__':
+    main()

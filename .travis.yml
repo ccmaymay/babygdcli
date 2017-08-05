@@ -1,0 +1,11 @@
+sudo: required
+
+install:
+  - pip --version
+  - pip install flake8
+
+before_script:
+  - flake8 --version
+
+script:
+  - flake8
