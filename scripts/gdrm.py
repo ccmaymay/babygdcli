@@ -42,16 +42,6 @@ def rm(service, path):
     else:
         rm_file(service, file_id, path)
 
-    if file_mime_type == FOLDER_MIME_TYPE:
-        response = service.files().list(
-            q="'{}' in parents and trashed=false".format(file_id),
-        ).execute()
-        for f in response.get('files', []):
-            print(f['name'])
-
-    else:
-        print(path)
-
 
 def main():
     parser = get_arg_parser('remove files or folders')
