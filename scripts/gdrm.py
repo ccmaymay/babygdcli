@@ -25,19 +25,20 @@ def rm(service, path):
             file_mime_type = f['mimeType']
 
     if file_mime_type == FOLDER_MIME_TYPE:
-        queue = [(path, file_id)]
+        stack = [(path, file_id)]
 
-        while queue:
-            (parent_path, parent_file_id) = queue.pop()
+        while stack:
+            (parent_path, parent_file_id) = stack.pop()
             response = service.files().list(
                 q="'{}' in parents and trashed=false".format(parent_file_id),
             ).execute()
             for f in response.get('files', []):
                 path = '/'.join((parent_path, f['name']))
                 if f['mimeType'] == FOLDER_MIME_TYPE:
-                    queue.insert(0, (path, f['id']))
+                    stack.append((path, f['id']))
                 else:
                     rm_file(service, f['id'], path)
+            rm_file(service, parent_file_id, path)
 
     else:
         rm_file(service, file_id, path)
