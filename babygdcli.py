@@ -95,14 +95,14 @@ class NoSuchFile(Exception):
         Exception.__init__(self, '%s does not exist' % path)
 
 
-def get_file_id(drive, parent_file_id, name):
-    files = list(search(drive, parent_file_id, name))
+def get_file(service, parent_file_id, name):
+    files = list(search(service, parent_file_id, name))
     if len(files) < 1:
         raise NoSuchFile(name)
     elif len(files) > 1:
         logging.warning(
             '{} in {} more than one match'.format(name, parent_file_id))
-    return files[0].get('id')
+    return files[0]
 
 
 def set_stdout_encoding():
